@@ -1,52 +1,40 @@
 const User = require('./user.model');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-// Email bhejne ka setup
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
+// Resend Setup
+const resend = new Resend(process.env.RESEND_API_KEY || 're_YOUR_KEY_HERE');
 
 const generateToken = (user) => {
   return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || 'secret_key_123', { expiresIn: '7d' });
 };
 
-// 1. Phone Login (Waisa hi rahega)
 const loginWithPhone = async (phone) => {
   let user = await User.findOne({ phone });
   if (!user) user = await User.create({ phone });
   return { user, token: generateToken(user) };
 };
 
-// 2. Send Real OTP to Email
 const sendOtpToEmail = async (email) => {
   let user = await User.findOne({ email });
   if (!user) user = await User.create({ email, name: email.split('@')[0] });
 
-  // 6 digit ka random OTP generate karo
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minute valid
-
   user.otp = otp;
-  user.otpExpires = otpExpires;
+  user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
   await user.save();
 
-  // Email bhejo
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER,
+  // Resend se email bhej rahe hain (Render par ye kabhi block nahi hoga)
+  await resend.emails.send({
+    from: 'onboarding@resend.dev', // Testing ke liye ye default de rahe hain
     to: email,
-    subject: 'NoBroker Clone - Your Login OTP',
+    subject: 'NoBroker Clone - Your OTP',
     text: `Aapka OTP hai: ${otp}. Ye 10 minute ke liye valid hai.`
   });
 
-  return { message: 'OTP sent to email' };
+  return { message: 'OTP sent' };
 };
 
-// 3. Verify OTP and Login
 const loginWithEmail = async (email, otp) => {
   let user = await User.findOne({ email });
   if (!user) throw new Error('User not found');
@@ -54,7 +42,6 @@ const loginWithEmail = async (email, otp) => {
   if (user.otp !== otp) throw new Error('Galat OTP');
   if (user.otpExpires < new Date()) throw new Error('OTP expire ho gaya');
 
-  // OTP clear kar do taaki dobara use na ho
   user.otp = undefined;
   user.otpExpires = undefined;
   await user.save();
