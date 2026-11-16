@@ -7,7 +7,8 @@ const propertySchema = new mongoose.Schema({
   city: { type: String, required: true },
   locality: { type: String },
   type: { type: String, enum: ['rent', 'sale'], required: true },
-  ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' } // 👈 Ye add kiya
+  imageUrl: { type: String }, // 👈 Ye line sabse zaroori hai
+  ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Property', propertySchema);
