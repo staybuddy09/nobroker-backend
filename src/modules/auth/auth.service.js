@@ -1,9 +1,5 @@
 const User = require('./user.model');
 const jwt = require('jsonwebtoken');
-const { Resend } = require('resend');
-
-// Resend Setup
-const resend = new Resend(process.env.RESEND_API_KEY || 're_YOUR_KEY_HERE');
 
 const generateToken = (user) => {
   return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || 'secret_key_123', { expiresIn: '7d' });
@@ -21,16 +17,28 @@ const sendOtpToEmail = async (email) => {
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   user.otp = otp;
-  user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+  user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
   await user.save();
 
-  // Resend se email bhej rahe hain (Render par ye kabhi block nahi hoga)
-  await resend.emails.send({
-    from: 'onboarding@resend.dev', // Testing ke liye ye default de rahe hain
-    to: email,
-    subject: 'NoBroker Clone - Your OTP',
-    text: `Aapka OTP hai: ${otp}. Ye 10 minute ke liye valid hai.`
+  // 👇 Brevo API se email bhej rahe hain (Kisi bhi email pe jayega)
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'api-key': process.env.BREVO_API_KEY,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      sender: { name: 'NoBroker Clone', email: process.env.EMAIL_USER }, // Jo email Brevo mein verify ki hai
+      to: [{ email: email }],
+      subject: 'NoBroker Clone - Your OTP',
+      htmlContent: `<h3>Aapka OTP hai: <b>${otp}</b></h3><p>Ye 10 minute ke liye valid hai.</p>`
+    })
   });
+
+  if (!response.ok) {
+    throw new Error('Email send failed');
+  }
 
   return { message: 'OTP sent' };
 };
