@@ -1,14 +1,12 @@
 const mongoose = require('mongoose');
 
-const propertySchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  bhk: { type: Number, required: true },
-  price: { type: Number, required: true },
-  city: { type: String, required: true },
-  locality: { type: String },
-  type: { type: String, enum: ['rent', 'sale'], required: true },
-  imageUrl: { type: String }, // 👈 Ye line add karo
-  ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+const userSchema = new mongoose.Schema({
+  phone: { type: String, unique: true, sparse: true },
+  email: { type: String, unique: true, sparse: true },
+  name: { type: String },
+  otp: { type: String }, 
+  otpExpires: { type: Date }, 
+  role: { type: String, enum: ['user', 'owner', 'admin'], default: 'user' }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Property', propertySchema);
+module.exports = mongoose.model('User', userSchema);
