@@ -1,17 +1,9 @@
 const express = require('express');
-const controller = require('./property.controller');
-const authMiddleware = require('../../middlewares/auth.middleware');
-const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
-
+const controller = require('./auth.controller');
 const router = express.Router();
 
-router.get('/', controller.list);
-router.get('/:id', controller.detail);
-
-// 👇 Image upload ka naya route (auth zaroori hai)
-router.post('/upload', authMiddleware, upload.single('image'), controller.uploadImage);
-
-router.post('/', authMiddleware, controller.create);
+router.post('/login', controller.login);
+router.post('/send-otp', controller.sendOtp);
+router.post('/email-login', controller.emailLogin);
 
 module.exports = router;
