@@ -1,4 +1,6 @@
 const propertyService = require('./property.service');
+const cloudinary = require('../../config/cloudinary');
+const streamifier = require('streamifier');
 
 const list = async (req, res, next) => {
   try {
@@ -20,7 +22,6 @@ const detail = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
-    // req.user middleware se aata hai, uski id nikal kar property mein daal rahe hain
     const propertyData = { ...req.body, ownerId: req.user.id }; 
     const data = await propertyService.createProperty(propertyData);
     res.status(201).json({ success: true, data });
@@ -29,4 +30,30 @@ const create = async (req, res, next) => {
   }
 };
 
-module.exports = { list, detail, create };
+// 👇 Ye raha wo function jo missing tha
+const uploadImage = async (req, res, next) => {
+  try {
+    if (!req.file) throw new Error('Koi image nahi mili');
+
+    const uploadFromBuffer = () => {
+      return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: 'nobroker_properties' },
+          (error, result) => {
+            if (result) resolve(result);
+            else reject(error);
+          }
+        );
+        streamifier.createReadStream(req.file.buffer).pipe(stream);
+      });
+    };
+
+    const result = await uploadFromBuffer();
+    res.status(200).json({ success: true, imageUrl: result.secure_url });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 👇 Dhyan se dekho, yahan uploadImage export ho raha hai
+module.exports = { list, detail, create, uploadImage };
