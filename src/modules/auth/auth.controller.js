@@ -1,59 +1,39 @@
-const propertyService = require('./property.service');
-const cloudinary = require('../../config/cloudinary');
-const streamifier = require('streamifier');
+const authService = require('./auth.service');
 
-const list = async (req, res, next) => {
+const login = async (req, res, next) => {
   try {
-    const data = await propertyService.listProperties(req.query);
+    const { phone } = req.body;
+    if (!phone) throw new Error('Phone number required');
+    const data = await authService.loginWithPhone(phone);
     res.status(200).json({ success: true, data });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
-const detail = async (req, res, next) => {
+const sendOtp = async (req, res, next) => {
   try {
-    const data = await propertyService.getPropertyById(req.params.id);
+    const { email } = req.body;
+    if (!email) throw new Error('Email required');
+    const data = await authService.sendOtpToEmail(email);
     res.status(200).json({ success: true, data });
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 };
 
-const create = async (req, res, next) => {
+const emailLogin = async (req, res, next) => {
   try {
-    // req.user middleware se aata hai, uski id nikal kar property mein daal rahe hain
-    const propertyData = { ...req.body, ownerId: req.user.id }; 
-    const data = await propertyService.createProperty(propertyData);
-    res.status(201).json({ success: true, data });
-  } catch (err) {
-    next(err);
-  }
+    const { email, otp } = req.body;
+    if (!email || !otp) throw new Error('Email and OTP required');
+    const data = await authService.loginWithEmail(email, otp);
+    res.status(200).json({ success: true, data });
+  } catch (err) { next(err); }
 };
 
-// 👇 Naya Image Upload Function
-const uploadImage = async (req, res, next) => {
+const googleLogin = async (req, res, next) => {
   try {
-    if (!req.file) throw new Error('Koi image nahi mili');
-
-    const uploadFromBuffer = () => {
-      return new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          { folder: 'nobroker_properties' },
-          (error, result) => {
-            if (result) resolve(result);
-            else reject(error);
-          }
-        );
-        streamifier.createReadStream(req.file.buffer).pipe(stream);
-      });
-    };
-
-    const result = await uploadFromBuffer();
-    res.status(200).json({ success: true, imageUrl: result.secure_url });
-  } catch (err) {
-    next(err);
-  }
+    const { idToken } = req.body;
+    if (!idToken) throw new Error('Google Token missing');
+    const data = await authService.loginWithGoogle(idToken);
+    res.status(200).json({ success: true, data });
+  } catch (err) { next(err); }
 };
 
-module.exports = { list, detail, create, uploadImage };
+module.exports = { login, sendOtp, emailLogin, googleLogin };
